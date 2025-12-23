@@ -1,0 +1,171 @@
+
+//---------------------------------------------------------------------------------------
+// Matrix Multiplication
+//---------------------------------------------------------------------------------------
+//  This is an parallel version matrix multiplication that uses the properly loop for memory accesses
+//---------------------------------------------------------------------------------------
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <omp.h>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h> 
+#include <unistd.h>
+using namespace std;
+//-----------------------------------------------------------------------
+//   Get user input for matrix dimension or printing option
+//-----------------------------------------------------------------------
+bool GetUserInput(int argc, char *argv[],int& n, int& isPrint)
+{
+	bool isOK = true;
+
+	if(argc < 2) 
+	{
+		cout << "Inform 2 Arguments:" << endl;
+		cout << "X : Matrix size [X x X]" << endl;
+		cout << "Y = 1: print the input/output matrix if X < 10" << endl;
+		isOK = false;
+	}
+	else 
+	{
+		//get matrix size
+		n = atoi(argv[1]);
+		if (n <=0) 
+		{
+			cout << "Matrix size must be larger than 0" <<endl;
+			isOK = false;
+		}
+
+		//is print the input/output matrix
+		if (argc >=3)
+			isPrint = (atoi(argv[3])==1 && n <=10)?1:0;
+		else
+			isPrint = 0;
+	}
+	return isOK;
+}
+
+//-----------------------------------------------------------------------
+//Initialize the value of matrix x[n x n]
+//-----------------------------------------------------------------------
+void InitializeMatrix(double** &x,int n,double value)
+{
+	x = new double*[n];
+	x[0] = new double[n*n];
+
+	for (int i = 1; i < n; i++)
+    x[i] = x[i-1] + n;
+
+	for (int i = 0 ; i < n ; i++)
+	{
+		for (int j = 0 ; j < n ; j++)
+		{
+			if (value == 0) // initialize matrix C with zeros
+         x[i][j] = value;
+      if (value == 1) // initialize matrix aA or B
+        x[i][j] = ((i+2) + (j+3)) + 5 ;
+		}
+	}
+}
+//------------------------------------------------------------------
+//Delete matrix x[n x n]
+//------------------------------------------------------------------
+void DeleteMatrix(double **x,int n)
+{
+	delete[] x[0];
+	delete[] x; 
+}
+//------------------------------------------------------------------
+//Print matrix	
+//------------------------------------------------------------------
+void PrintMatrix(double **x, int n) 
+{
+	for (int i = 0 ; i < n ; i++)
+	{
+		cout<< "Row " << (i+1) << ":\t" ;
+		for (int j = 0 ; j < n ; j++)
+		{
+			printf("%.2f\t", x[i][j]);
+		}
+		cout<<endl ;
+	}
+}
+
+
+//------------------------------------------------------------------
+//Compute Matrix Multiplication
+//------------------------------------------------------------------
+void ParallelMatrixMultiplication(double** a, double** b,double** c, int n)
+{
+    printf("Parallel Version of Matrix Multiplication - OpenMP with %d threads\n", omp_get_max_threads());
+    #pragma omp parallel for
+    for (int i = 0 ; i < n ; i++)
+    {
+        for (int k = 0 ; k < n ; k++)
+            for (int j = 0 ; j < n ; j++)
+                c[i][j] += a[i][k]*b[k][j];
+    }
+}
+//------------------------------------------------------------------
+// Main Program
+//------------------------------------------------------------------
+int main(int argc, char *argv[])
+{
+	double **a,**b,**c;
+	int	n,isPrint;
+	double runtime;
+
+	if (GetUserInput(argc,argv,n,isPrint)==false) return 1;
+
+	//Initialize the value of matrix a, b, c
+	InitializeMatrix(a,n,1.0);
+	InitializeMatrix(b,n,1.0);
+	InitializeMatrix(c,n,0.0);
+
+	//Print the input maxtrices
+	if (isPrint==1)
+	{
+		cout<< "Matrix a[n][n]:" << endl;
+		PrintMatrix(a,n); 
+		cout<< "Matrix b[n][n]:" << endl;
+		PrintMatrix(b,n); 
+	}
+
+    //retrieve and display the number of threads based on the OMP_NUM_THREADS environment that was exported
+    const int nt=omp_get_max_threads(); 
+	
+	if (nt <= 1)
+		printf("This program in running sequential mode\n");
+    else
+    	printf("OpenMP code will run with with %d threads based on OMP_NUM_THREADS environment variable\n", nt);
+    
+	printf("This node has available %ld physical cores (Including virtual cores created Intel Hyper-thread technology).\n", sysconf(_SC_NPROCESSORS_ONLN ));
+	/*
+	_SC_NPROCESSORS_ONLN: This is a constant that tells sysconf() to return the number of 
+	logical processors (or CPU cores) currently available on the system. 
+	Logical processors may be physical cores or virtual cores created by technologies like 
+	hyper-threading (on Intel processors, for example). 
+	Each logical processor is a separate thread of execution, even if multiple logical processors share a physical core.
+	
+	*/
+	runtime = omp_get_wtime();
+
+	//Do Matrix Multiplication
+	ParallelMatrixMultiplication(a,b,c,n);
+
+	runtime = omp_get_wtime() - runtime;
+
+	//The matrix is as below:
+	if (isPrint==1)
+	{
+		cout<< "Output matrix:" << endl;
+		PrintMatrix(c,n); 
+	}
+	cout<< "Program runs in "	<< setiosflags(ios::fixed) << setprecision(2)  << runtime << " seconds\n"; 
+	
+	DeleteMatrix(a,n);	
+	DeleteMatrix(b,n);	
+	DeleteMatrix(c,n);	
+	return 0;
+}
