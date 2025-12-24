@@ -72,10 +72,11 @@ void ParallelMatrixMultiplication(double *a, double *b, double *c, int n)
     {
         for (int k = 0; k < n; k++)
         {
-            #pragma vector aligned
+            double aik = a[i * n + k];
+            #pragma omp simd
             for (int j = 0; j < n; j++)
             {
-                c[i * n + j] += a[i * n + k] * b[k * n + j];
+                c[i * n + j] += aik * b[k * n + j];
             }
         }
     }
