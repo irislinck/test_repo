@@ -47,6 +47,10 @@ bool GetUserInput(int argc, char *argv[], int &n, int &isPrint)
 double *AlignedMatrixAlloc(int n, double value)
 {
     double *x = (double *)aligned_alloc(32, n * n * sizeof(double));
+    if (!x) {
+        cerr << "Memory allocation failed!" << endl;
+        exit(EXIT_FAILURE);
+    }
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j)
             x[i * n + j] = (value == 0.0) ? 0.0 : ((i + 2) + (j + 3)) + 5;
